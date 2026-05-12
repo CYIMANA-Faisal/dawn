@@ -10,6 +10,7 @@ import { useGetFormByIdQuery, useSubmitPublicFormMutation } from '@/features/for
 import { useGetPublicShareholderQuery } from '@/features/projects/shareholdersApi'
 import type {
   FormCondition,
+  FormDefaultWhenRule,
   FormField,
   FormOption,
   FormSection,
@@ -326,6 +327,111 @@ function normalizeFieldDescriptor(value: string | null | undefined): string {
     .replace(/\s+/g, ' ')
 }
 
+function isSignatureSection(section: FormSection): boolean {
+  const descriptors = [section.key, section.title, section.id]
+    .map((descriptor) => normalizeFieldDescriptor(descriptor))
+    .filter((descriptor) => descriptor.length > 0)
+
+  if (descriptors.some((descriptor) => descriptor.includes('signature'))) {
+    return true
+  }
+
+  return Array.isArray(section.questions)
+    ? section.questions.some((field) => field.type === 'signature')
+    : false
+}
+
+function isSignatoryNameFieldCandidate(field: FormField): boolean {
+  const descriptors = [field.label, field.key, field.id]
+    .map((descriptor) => normalizeFieldDescriptor(descriptor))
+    .filter((descriptor) => descriptor.length > 0)
+
+  return descriptors.some(
+    (descriptor) =>
+      descriptor.includes('signatory name') ||
+      descriptor.includes('name in capital letters') ||
+      descriptor.includes('name in capitals'),
+  )
+}
+
+function getFieldTransform(field: FormField): 'uppercase' | 'lowercase' | null {
+  const transform = normalizeFieldDescriptor(field.transform || '')
+
+  if (transform === 'uppercase') return 'uppercase'
+  if (transform === 'lowercase') return 'lowercase'
+
+  return null
+}
+
+function applyStringTransform(value: string, transform: 'uppercase' | 'lowercase'): string {
+  if (transform === 'uppercase') return value.toLocaleUpperCase()
+  return value.toLocaleLowerCase()
+}
+
+function applyFieldTransform(field: FormField, value: FormAnswer): FormAnswer {
+  const transform = getFieldTransform(field)
+  if (!transform || typeof value !== 'string') return value
+  return applyStringTransform(value, transform)
+}
+
+function resolveDefaultValueFromSource(
+  source: string,
+  shareholderName: string,
+  shareholderEmail: string,
+): FormPrimitive | undefined {
+  const normalizedSource = normalizeFieldDescriptor(source)
+
+  if (
+    normalizedSource === 'shareholder membername' ||
+    normalizedSource === 'shareholder member name' ||
+    normalizedSource === 'shareholder name'
+  ) {
+    return shareholderName.trim() || undefined
+  }
+
+  if (normalizedSource === 'shareholder email') {
+    return shareholderEmail.trim() || undefined
+  }
+
+  return undefined
+}
+
+function resolveFieldDefaultValue(
+  field: FormField,
+  answers: FormAnswers,
+  shareholderName: string,
+  shareholderEmail: string,
+): FormPrimitive | undefined {
+  const defaultWhenRules = Array.isArray(field.defaultWhen)
+    ? (field.defaultWhen as FormDefaultWhenRule[])
+    : []
+
+  for (const rule of defaultWhenRules) {
+    if (rule.when && !evaluateCondition(rule.when, answers)) continue
+
+    if (typeof rule.valueFrom === 'string' && rule.valueFrom.trim()) {
+      const sourceValue = resolveDefaultValueFromSource(
+        rule.valueFrom,
+        shareholderName,
+        shareholderEmail,
+      )
+      if (sourceValue !== undefined) {
+        return sourceValue
+      }
+    }
+
+    if (
+      typeof rule.value === 'string' ||
+      typeof rule.value === 'number' ||
+      typeof rule.value === 'boolean'
+    ) {
+      return rule.value
+    }
+  }
+
+  return undefined
+}
+
 function normalizeTemplateToken(value: string): string {
   return value.trim().toLowerCase().replace(/[^a-z0-9]/g, '')
 }
@@ -639,7 +745,9 @@ function renderField(
         <label className={PAPER_FIELD_TITLE_CLASS}>{label + requiredMark}</label>
         <textarea
           value={value}
-          onChange={(event) => onAnswerChange(answerKey, event.target.value)}
+          onChange={(event) =>
+            onAnswerChange(answerKey, applyFieldTransform(field, event.target.value))
+          }
           rows={4}
           placeholder="Type your answer"
           readOnly={isReadOnly}
@@ -658,7 +766,7 @@ function renderField(
       <Input
         type={inputType}
         value={value}
-        onChange={(event) => onAnswerChange(answerKey, event.target.value)}
+        onChange={(event) => onAnswerChange(answerKey, applyFieldTransform(field, event.target.value))}
         placeholder="Your answer"
         readOnly={isReadOnly}
         className="h-10 rounded-sm border-[#d9ccb5] bg-[#fffefb] text-[0.95rem] text-[#322515] shadow-none focus-visible:ring-[#c8b08b]"
@@ -728,11 +836,31 @@ export default function ProjectFormRenderPage() {
     return []
   }, [formSchema])
 
+  const signatureSections = useMemo(() => {
+    return formSections.filter((section) => isSignatureSection(section))
+  }, [formSections])
+
+  const nonSignatureSections = useMemo(() => {
+    return formSections.filter((section) => !isSignatureSection(section))
+  }, [formSections])
+
   const topLevelFields = useMemo(() => {
     return formSections.flatMap((section) =>
       Array.isArray(section.questions) ? section.questions : [],
     )
   }, [formSections])
+
+  const nonSignatureTopLevelFields = useMemo(() => {
+    return nonSignatureSections.flatMap((section) =>
+      Array.isArray(section.questions) ? section.questions : [],
+    )
+  }, [nonSignatureSections])
+
+  const signatureTopLevelFields = useMemo(() => {
+    return signatureSections.flatMap((section) =>
+      Array.isArray(section.questions) ? section.questions : [],
+    )
+  }, [signatureSections])
 
   const shareholderName = useMemo(() => shareholderDetails?.name?.trim() || '', [shareholderDetails])
   const shareholderEmail = useMemo(
@@ -754,12 +882,20 @@ export default function ProjectFormRenderPage() {
   const memberNameFieldAnswerKey = useMemo(() => {
     if (!shareholderName) return null
 
-    const memberNameField = flattenFields(topLevelFields).find((field) =>
+    const memberNameField = flattenFields(nonSignatureTopLevelFields).find((field) =>
       isMemberNameFieldCandidate(field),
     )
 
     return memberNameField ? getFieldAnswerKey(memberNameField) : null
-  }, [topLevelFields, shareholderName])
+  }, [nonSignatureTopLevelFields, shareholderName])
+
+  const signatoryNameFieldAnswerKey = useMemo(() => {
+    const signatoryNameField = flattenFields(signatureTopLevelFields).find((field) =>
+      isSignatoryNameFieldCandidate(field),
+    )
+
+    return signatoryNameField ? getFieldAnswerKey(signatoryNameField) : null
+  }, [signatureTopLevelFields])
 
   const forcedReadOnlyAnswerKeys = useMemo(() => {
     if (!memberNameFieldAnswerKey) return new Set<string>()
@@ -767,15 +903,73 @@ export default function ProjectFormRenderPage() {
   }, [memberNameFieldAnswerKey])
 
   const resolvedAnswers = useMemo<FormAnswers>(() => {
-    if (!memberNameFieldAnswerKey || !shareholderName) return answers
+    let nextAnswers: FormAnswers | null = null
 
-    if (answers[memberNameFieldAnswerKey] === shareholderName) return answers
-
-    return {
-      ...answers,
-      [memberNameFieldAnswerKey]: shareholderName,
+    const getCurrentAnswers = () => nextAnswers ?? answers
+    const setAnswer = (answerKey: string, value: FormAnswer) => {
+      if (!nextAnswers) nextAnswers = { ...answers }
+      nextAnswers[answerKey] = value
     }
-  }, [answers, memberNameFieldAnswerKey, shareholderName])
+    const clearAnswer = (answerKey: string) => {
+      if (!nextAnswers) nextAnswers = { ...answers }
+      delete nextAnswers[answerKey]
+    }
+
+    if (memberNameFieldAnswerKey && shareholderName) {
+      const currentValue = getCurrentAnswers()[memberNameFieldAnswerKey]
+      if (typeof currentValue !== 'string' || currentValue.trim() !== shareholderName) {
+        setAnswer(memberNameFieldAnswerKey, shareholderName)
+      }
+    }
+
+    const flattenedFields = flattenFields(topLevelFields)
+
+    for (const field of flattenedFields) {
+      const answerKey = getFieldAnswerKey(field)
+      const currentValue = getCurrentAnswers()[answerKey]
+      const isVisible = isFieldVisible(field, getCurrentAnswers())
+
+      if (field.clearWhenHidden && !isVisible && hasAnswerValue(currentValue)) {
+        clearAnswer(answerKey)
+      }
+    }
+
+    for (const field of flattenedFields) {
+      const answerKey = getFieldAnswerKey(field)
+      const currentValue = getCurrentAnswers()[answerKey]
+      if (hasAnswerValue(currentValue)) continue
+      if (!isFieldVisible(field, getCurrentAnswers())) continue
+
+      const defaultValue = resolveFieldDefaultValue(
+        field,
+        getCurrentAnswers(),
+        shareholderName,
+        shareholderEmail,
+      )
+      if (defaultValue === undefined) continue
+
+      setAnswer(answerKey, applyFieldTransform(field, defaultValue))
+    }
+
+    for (const field of flattenedFields) {
+      const answerKey = getFieldAnswerKey(field)
+      const currentValue = getCurrentAnswers()[answerKey]
+      if (typeof currentValue !== 'string') continue
+
+      const transformedValue = applyFieldTransform(field, currentValue)
+      if (typeof transformedValue === 'string' && transformedValue !== currentValue) {
+        setAnswer(answerKey, transformedValue)
+      }
+    }
+
+    return nextAnswers ?? answers
+  }, [
+    answers,
+    memberNameFieldAnswerKey,
+    shareholderEmail,
+    shareholderName,
+    topLevelFields,
+  ])
 
   const runtimeTemplateValues = useMemo<RuntimeTemplateValues>(() => {
     const values: RuntimeTemplateValues = {}
@@ -843,6 +1037,13 @@ export default function ProjectFormRenderPage() {
   }, [topLevelFields])
 
   const signatureDisplayName = useMemo(() => {
+    if (signatoryNameFieldAnswerKey) {
+      const signatoryNameValue = resolvedAnswers[signatoryNameFieldAnswerKey]
+      if (typeof signatoryNameValue === 'string' && signatoryNameValue.trim()) {
+        return signatoryNameValue.trim()
+      }
+    }
+
     if (memberNameFieldAnswerKey) {
       const memberNameValue = resolvedAnswers[memberNameFieldAnswerKey]
       if (typeof memberNameValue === 'string' && memberNameValue.trim()) {
@@ -851,7 +1052,12 @@ export default function ProjectFormRenderPage() {
     }
 
     return shareholderName.trim()
-  }, [memberNameFieldAnswerKey, resolvedAnswers, shareholderName])
+  }, [
+    memberNameFieldAnswerKey,
+    resolvedAnswers,
+    shareholderName,
+    signatoryNameFieldAnswerKey,
+  ])
 
   const signatureDisplayNameInCaps = useMemo(
     () => signatureDisplayName.toLocaleUpperCase(),
@@ -1142,67 +1348,69 @@ export default function ProjectFormRenderPage() {
 
             <Card className="rounded-sm border-[#d6c4a7] bg-[#fffefb]/90 shadow-none">
               <CardContent className="space-y-6 pt-6">
-              {formSections.length === 0 ? (
-                <p className="text-sm text-[#5d4a33]">No questions are available for this form.</p>
-              ) : (
-                formSections.map((section) => (
-                  <div key={section.id} className="space-y-3">
-                    {section.title && (
-                      <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-[#705b3d]">
-                        {section.title}
-                      </h3>
-                    )}
-                    <div className="space-y-5">
-                      {section.questions.map((field) => (
-                        <Fragment key={field.id}>
-                          {renderField(
-                            field,
-                            resolvedAnswers,
-                            onAnswerChange,
-                            forcedReadOnlyAnswerKeys,
-                            runtimeTemplateValues,
-                          )}
-                        </Fragment>
-                      ))}
+                {nonSignatureSections.length === 0 ? (
+                  <p className="text-sm text-[#5d4a33]">
+                    No non-signature questions are available for this form.
+                  </p>
+                ) : (
+                  nonSignatureSections.map((section) => (
+                    <div key={section.id} className="space-y-3">
+                      {section.title && (
+                        <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-[#705b3d]">
+                          {section.title}
+                        </h3>
+                      )}
+                      <div className="space-y-5">
+                        {section.questions.map((field) => (
+                          <Fragment key={field.id}>
+                            {renderField(
+                              field,
+                              resolvedAnswers,
+                              onAnswerChange,
+                              forcedReadOnlyAnswerKeys,
+                              runtimeTemplateValues,
+                            )}
+                          </Fragment>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))
-              )}
+                  ))
+                )}
 
-              {showValidation && (
-                <Card
-                  className={
-                    isFormReady
-                      ? 'rounded-sm border-[#b7c5a5] bg-[#eef5e4]'
-                      : 'rounded-sm border-[#d2bb95] bg-[#fbf3df]'
-                  }
-                >
-                  <CardContent className="space-y-2 p-3">
-                    {isFormReady ? (
-                      <p className="text-sm text-[#365a2e]">
-                        {hasSignatureField
-                          ? 'All required fields are filled and signature is provided.'
-                          : 'All required fields are filled.'}
-                      </p>
-                    ) : (
-                      <>
-                        {missingRequiredFields.length > 0 && (
-                          <>
-                            <p className="text-sm text-[#7a5a23]">
-                              Missing required fields: {missingRequiredFields.length}
-                            </p>
-                            <ul className="list-disc pl-4 text-xs text-[#7a5a23]">
-                              {missingRequiredFields.map((field) => (
-                                <li key={field.id}>{field.label || field.key || field.id}</li>
-                              ))}
-                            </ul>
-                          </>
-                        )}
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
+                {showValidation && (
+                  <Card
+                    className={
+                      isFormReady
+                        ? 'rounded-sm border-[#b7c5a5] bg-[#eef5e4]'
+                        : 'rounded-sm border-[#d2bb95] bg-[#fbf3df]'
+                    }
+                  >
+                    <CardContent className="space-y-2 p-3">
+                      {isFormReady ? (
+                        <p className="text-sm text-[#365a2e]">
+                          {hasSignatureField
+                            ? 'All required fields are filled and signature is provided.'
+                            : 'All required fields are filled.'}
+                        </p>
+                      ) : (
+                        <>
+                          {missingRequiredFields.length > 0 && (
+                            <>
+                              <p className="text-sm text-[#7a5a23]">
+                                Missing required fields: {missingRequiredFields.length}
+                              </p>
+                              <ul className="list-disc pl-4 text-xs text-[#7a5a23]">
+                                {missingRequiredFields.map((field) => (
+                                  <li key={field.id}>{field.label || field.key || field.id}</li>
+                                ))}
+                              </ul>
+                            </>
+                          )}
+                        </>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
               </CardContent>
             </Card>
 
@@ -1220,6 +1428,30 @@ export default function ProjectFormRenderPage() {
                 </p>
               </CardHeader>
               <CardContent className="space-y-4 pt-5">
+                {signatureSections.map((section) => (
+                  <div key={section.id} className="space-y-3">
+                    {section.title &&
+                      normalizeFieldDescriptor(section.title) !== 'signature' && (
+                        <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-[#705b3d]">
+                          {section.title}
+                        </h3>
+                      )}
+                    <div className="space-y-5">
+                      {section.questions.map((field) => (
+                        <Fragment key={field.id}>
+                          {renderField(
+                            field,
+                            resolvedAnswers,
+                            onAnswerChange,
+                            forcedReadOnlyAnswerKeys,
+                            runtimeTemplateValues,
+                          )}
+                        </Fragment>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+
                 <div className="flex flex-wrap items-center gap-2">
                   <Button
                     type="button"

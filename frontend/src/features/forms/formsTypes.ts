@@ -26,6 +26,12 @@ export type FormRequiredWhen = {
   anyAnswered?: string[]
 }
 
+export type FormDefaultWhenRule = {
+  when?: FormCondition | null
+  value?: string | number | boolean | null
+  valueFrom?: string | null
+}
+
 export type FormField = {
   id: string
   key?: string
@@ -41,6 +47,8 @@ export type FormField = {
   addButtonLabel?: string | null
   minRows?: number | null
   clearWhenHidden?: boolean
+  transform?: string | null
+  defaultWhen?: FormDefaultWhenRule[] | null
 }
 
 export type FormSection = {

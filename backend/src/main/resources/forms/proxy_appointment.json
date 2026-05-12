@@ -332,13 +332,6 @@
           ]
         },
         {
-          "key": "signature_date",
-          "type": "date",
-          "label": "Date",
-          "readOnly": true,
-          "systemGenerated": "submit_date"
-        },
-        {
           "key": "signatory_name",
           "type": "text",
           "label": "Name in CAPITAL LETTERS",
