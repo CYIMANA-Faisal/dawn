@@ -82,3 +82,38 @@ export type SubmitFormRequest = {
 export type SubmitFormResponse = {
   message?: string
 }
+
+export type FormStatisticsBasis = 'headcount' | 'shares'
+
+export type FormStatisticsSegmentTone = 'green' | 'red' | 'amber' | 'grey'
+
+export type FormStatisticsSegment = {
+  key?: string
+  label: string
+  tone?: FormStatisticsSegmentTone | string | null
+  percentage?: number | null
+  count?: number | null
+  shares?: number | null
+}
+
+export type FormStatisticsBlock = {
+  key?: string
+  title: string
+  segments?: FormStatisticsSegment[] | null
+}
+
+export type FormStatisticsPopulation = {
+  eligibleShareholders?: number | null
+  eligibleShares?: number | null
+  sentShareholders?: number | null
+  completedShareholders?: number | null
+}
+
+export type FormStatisticsResponse = {
+  projectId?: string
+  formId?: string
+  generatedAt?: string | null
+  basis?: FormStatisticsBasis | string | null
+  population?: FormStatisticsPopulation | null
+  blocks?: FormStatisticsBlock[] | null
+}

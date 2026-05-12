@@ -4,6 +4,8 @@ import type {
   DistributeFormResponse,
   FormDropdownItem,
   FormSchema,
+  FormStatisticsBasis,
+  FormStatisticsResponse,
   SubmitFormRequest,
   SubmitFormResponse,
 } from './formsTypes'
@@ -17,6 +19,12 @@ type DistributeFormArgs = {
 type SubmitPublicFormArgs = {
   formId: string
   body: SubmitFormRequest
+}
+
+type GetFormStatisticsArgs = {
+  projectId: string
+  formId: string
+  basis?: FormStatisticsBasis
 }
 
 const FORMS_TAG = 'Forms' as const
@@ -37,6 +45,16 @@ export const formsApi = Api.injectEndpoints({
               { type: FORMS_TAG, id: 'DROPDOWN' },
             ]
           : [{ type: FORMS_TAG, id: 'DROPDOWN' }],
+    }),
+
+    getFormStatistics: builder.query<FormStatisticsResponse, GetFormStatisticsArgs>({
+      query: ({ projectId, formId, basis = 'headcount' }) => ({
+        url: `/projects/${projectId}/forms/${formId}/statistics`,
+        params: { basis },
+      }),
+      providesTags: (_result, _error, { formId }) => [
+        { type: FORMS_TAG, id: `${formId}:statistics` },
+      ],
     }),
 
     distributeForm: builder.mutation<DistributeFormResponse, DistributeFormArgs>({
@@ -74,5 +92,6 @@ export const {
   useDistributeFormMutation,
   useGetFormByIdQuery,
   useGetFormsDropdownQuery,
+  useGetFormStatisticsQuery,
   useSubmitPublicFormMutation,
 } = formsApi

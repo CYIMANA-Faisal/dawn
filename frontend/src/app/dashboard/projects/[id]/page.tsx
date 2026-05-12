@@ -7,11 +7,9 @@ import {
   ArrowLeft,
   BarChart3,
   Hash,
-  Mail,
   PieChart,
   Plus,
   Send,
-  ShieldCheck,
   Upload,
   UserPlus,
   Users,
@@ -251,10 +249,6 @@ export default function ProjectDetailsPage() {
     return shareholders.reduce((sum, shareholder) => sum + shareholder.numberOfShares, 0)
   }, [shareholders])
 
-  const shareholdersWithEmail = useMemo(() => {
-    return shareholders.filter((shareholder) => Boolean(shareholder.email?.trim())).length
-  }, [shareholders])
-
   const createdBy = project?.createdByName || project?.createdByUserId || 'Unknown'
   const isArchived = project?.status === 'ARCHIVED'
 
@@ -428,15 +422,9 @@ export default function ProjectDetailsPage() {
               </CardContent>
             </Card>
 
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <StatCard icon={Users} label="Total Shareholders" value={totalShareholders} />
               <StatCard icon={PieChart} label="Total Shares %" value={sharesOnCurrentPage} />
-              <StatCard icon={Mail} label="With Email (Page)" value={shareholdersWithEmail} />
-              <StatCard
-                icon={ShieldCheck}
-                label="Current Page"
-                value={totalPages > 0 ? `${currentPage}/${totalPages}` : '0/0'}
-              />
             </div>
 
             <Card className="border-slate-200/80 bg-white">
@@ -524,7 +512,12 @@ export default function ProjectDetailsPage() {
                               <TableHead key={form.id}>
                                 <div className="flex min-w-[200px] items-center justify-between gap-2">
                                   <span className="truncate">{form.title}</span>
-                                  <Button asChild type="button" size="sm" variant="outline" className="h-7 px-2">
+                                  <Button
+                                    asChild
+                                    type="button"
+                                    size="sm"
+                                    className="h-7 bg-emerald-600 px-2 text-white hover:bg-emerald-700 focus-visible:ring-emerald-500"
+                                  >
                                     <Link href={`/projects/${projectId}/forms/${form.id}/stats`}>
                                       <BarChart3 className="h-3.5 w-3.5" />
                                       View stats
