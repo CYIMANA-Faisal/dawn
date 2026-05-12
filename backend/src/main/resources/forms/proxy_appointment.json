@@ -1,0 +1,426 @@
+{
+  "formKey": "proxy_appointment_creditors_voluntary_winding_up",
+  "title": "Proxy Appointment (Creditors’ Voluntary Winding Up)",
+  "sections": [
+    {
+      "key": "capacity_section",
+      "title": "Capacity",
+      "questions": [
+        {
+          "key": "capacity",
+          "type": "radio",
+          "label": "Are you signing this form as the named member, or on behalf of someone else?",
+          "required": true,
+          "options": [
+            {
+              "label": "On my own behalf",
+              "value": "own_behalf"
+            },
+            {
+              "label": "On behalf of someone else",
+              "value": "someone_else"
+            }
+          ]
+        },
+        {
+          "key": "person_represented_name",
+          "type": "text",
+          "label": "Name of the person you are signing on behalf of",
+          "required": true,
+          "visibleWhen": {
+            "questionKey": "capacity",
+            "operator": "equals",
+            "value": "someone_else"
+          },
+          "clearWhenHidden": true
+        }
+      ]
+    },
+    {
+      "key": "member_details_section",
+      "title": "Member details",
+      "questions": [
+        {
+          "key": "member_name",
+          "type": "text",
+          "label": "Name of member",
+          "readOnly": true,
+          "prefillFrom": "shareholder.memberName"
+        },
+        {
+          "key": "member_address",
+          "type": "textarea",
+          "label": "Address",
+          "required": false
+        }
+      ]
+    },
+    {
+      "key": "proxy_holder_section",
+      "title": "Name of proxy holder",
+      "questions": [
+        {
+          "key": "primary_proxy_type",
+          "type": "radio",
+          "label": "Select your proxy",
+          "required": true,
+          "tooltip": "Please insert name of person who must be 18 or over, or the chair of the meeting.",
+          "options": [
+            {
+              "label": "Chair of the meeting",
+              "value": "chair"
+            },
+            {
+              "label": "Named individual",
+              "value": "named_individual"
+            }
+          ]
+        },
+        {
+          "key": "primary_proxy_name",
+          "type": "text",
+          "label": "Name of Preferred proxy",
+          "required": true,
+          "visibleWhen": {
+            "questionKey": "primary_proxy_type",
+            "operator": "equals",
+            "value": "named_individual"
+          },
+          "clearWhenHidden": true
+        },
+        {
+          "key": "alternate_proxy_1",
+          "type": "text",
+          "label": "Alternative Proxy 1",
+          "required": false
+        },
+        {
+          "key": "alternate_proxy_2",
+          "type": "text",
+          "label": "Alternative Proxy 2",
+          "required": false
+        }
+      ]
+    },
+    {
+      "key": "appointment_paragraph_section",
+      "title": "Appointment paragraph",
+      "questions": [
+        {
+          "key": "appointment_paragraph",
+          "type": "computed_text",
+          "templates": [
+            {
+              "visibleWhen": {
+                "questionKey": "capacity",
+                "operator": "equals",
+                "value": "own_behalf"
+              },
+              "text": "I appoint the above person to be my proxy holder at the meeting of members to be held on {{meetingDate}} or at any adjournment of that meeting. The proxy holder is to propose or vote as instructed below."
+            },
+            {
+              "visibleWhen": {
+                "questionKey": "capacity",
+                "operator": "equals",
+                "value": "someone_else"
+              },
+              "text": "I appoint the above person to be the member’s proxy holder at the meeting of members to be held on {{meetingDate}} or at any adjournment of that meeting. The proxy holder is to propose or vote as instructed below."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "voting_instructions_section",
+      "title": "Voting instructions for resolutions",
+      "questions": [
+        {
+          "key": "resolution_1_vote",
+          "type": "radio",
+          "label": "That the Company be wound up voluntarily.",
+          "required": true,
+          "defaultFrom": "adminPrefill.resolution1Vote",
+          "options": [
+            {
+              "label": "Agree",
+              "value": "agree"
+            },
+            {
+              "label": "Disagree",
+              "value": "disagree"
+            },
+            {
+              "label": "Proxy holder's discretion",
+              "value": "discretion"
+            }
+          ]
+        },
+        {
+          "key": "resolution_2_liquidator_choice",
+          "type": "radio",
+          "label": "For the appointment of liquidator(s) of the Company",
+          "required": true,
+          "options": [
+            {
+              "label": "{{proposedLiquidatorsNames}} of {{proposedLiquidatorsFirmAddress}}",
+              "value": "admin_proposed_liquidator"
+            },
+            {
+              "label": "Enter another liquidator",
+              "value": "custom_liquidator"
+            }
+          ]
+        },
+        {
+          "key": "custom_liquidator_name",
+          "type": "text",
+          "label": "Liquidator name",
+          "required": true,
+          "visibleWhen": {
+            "questionKey": "resolution_2_liquidator_choice",
+            "operator": "equals",
+            "value": "custom_liquidator"
+          },
+          "clearWhenHidden": true
+        },
+        {
+          "key": "custom_liquidator_address",
+          "type": "textarea",
+          "label": "Liquidator address",
+          "required": true,
+          "visibleWhen": {
+            "questionKey": "resolution_2_liquidator_choice",
+            "operator": "equals",
+            "value": "custom_liquidator"
+          },
+          "clearWhenHidden": true
+        },
+        {
+          "key": "allow_proxy_discretion",
+          "type": "checkbox",
+          "label": "Allow proxy holder’s discretion where available",
+          "defaultValue": true
+        },
+        {
+          "key": "resolution_3_vote",
+          "type": "radio",
+          "label": "That anything required or authorised to be done by the liquidators may be done by both or either of them.",
+          "required": true,
+          "options": [
+            {
+              "label": "Agree",
+              "value": "agree"
+            },
+            {
+              "label": "Disagree",
+              "value": "disagree"
+            },
+            {
+              "label": "Proxy holder's discretion",
+              "value": "discretion",
+              "visibleWhen": {
+                "questionKey": "allow_proxy_discretion",
+                "operator": "equals",
+                "value": true
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "liquidation_committee_section",
+      "title": "Liquidation committee",
+      "questions": [
+        {
+          "key": "committee_member_name",
+          "type": "text",
+          "label": "Name",
+          "requiredWhen": {
+            "anyAnswered": [
+              "committee_member_name",
+              "committee_member_address",
+              "committee_represents_whom"
+            ]
+          }
+        },
+        {
+          "key": "committee_member_address",
+          "type": "textarea",
+          "label": "Address",
+          "requiredWhen": {
+            "anyAnswered": [
+              "committee_member_name",
+              "committee_member_address",
+              "committee_represents_whom"
+            ]
+          }
+        },
+        {
+          "key": "committee_represents_whom",
+          "type": "text",
+          "label": "Representing whom",
+          "requiredWhen": {
+            "anyAnswered": [
+              "committee_member_name",
+              "committee_member_address",
+              "committee_represents_whom"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "key": "other_resolutions_section",
+      "title": "Other resolutions",
+      "questions": [
+        {
+          "key": "other_resolutions",
+          "type": "repeatable_group",
+          "addButtonLabel": "Add another resolution",
+          "minRows": 0,
+          "fields": [
+            {
+              "key": "resolution_text",
+              "type": "textarea",
+              "label": "Resolution text",
+              "required": true
+            },
+            {
+              "key": "vote",
+              "type": "radio",
+              "label": "Vote",
+              "required": true,
+              "options": [
+                {
+                  "label": "Agree",
+                  "value": "agree"
+                },
+                {
+                  "label": "Disagree",
+                  "value": "disagree"
+                },
+                {
+                  "label": "Proxy holder's discretion",
+                  "value": "discretion",
+                  "visibleWhen": {
+                    "questionKey": "allow_proxy_discretion",
+                    "operator": "equals",
+                    "value": true
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "signature_section",
+      "title": "Signature",
+      "questions": [
+        {
+          "key": "signature",
+          "type": "signature",
+          "label": "Signature",
+          "required": true,
+          "captures": [
+            "image",
+            "ipAddress",
+            "userAgent",
+            "timestamp"
+          ]
+        },
+        {
+          "key": "signature_date",
+          "type": "date",
+          "label": "Date",
+          "readOnly": true,
+          "systemGenerated": "submit_date"
+        },
+        {
+          "key": "signatory_name",
+          "type": "text",
+          "label": "Name in CAPITAL LETTERS",
+          "required": true,
+          "transform": "uppercase",
+          "defaultWhen": [
+            {
+              "when": {
+                "questionKey": "capacity",
+                "operator": "equals",
+                "value": "own_behalf"
+              },
+              "valueFrom": "shareholder.memberName"
+            }
+          ]
+        },
+        {
+          "key": "relationship_or_authority",
+          "type": "text",
+          "label": "Relationship or authority",
+          "required": true,
+          "visibleWhen": {
+            "questionKey": "capacity",
+            "operator": "equals",
+            "value": "someone_else"
+          },
+          "clearWhenHidden": true
+        },
+        {
+          "key": "is_member_body_corporate",
+          "type": "radio",
+          "label": "Is the member a body corporate?",
+          "required": true,
+          "visibleWhen": {
+            "questionKey": "capacity",
+            "operator": "equals",
+            "value": "someone_else"
+          },
+          "clearWhenHidden": true,
+          "options": [
+            {
+              "label": "Yes",
+              "value": true
+            },
+            {
+              "label": "No",
+              "value": false
+            }
+          ]
+        },
+        {
+          "key": "is_sole_member",
+          "type": "radio",
+          "label": "Are you the sole member of the Company?",
+          "required": true,
+          "visibleWhen": {
+            "all": [
+              {
+                "questionKey": "capacity",
+                "operator": "equals",
+                "value": "someone_else"
+              },
+              {
+                "questionKey": "is_member_body_corporate",
+                "operator": "equals",
+                "value": true
+              }
+            ]
+          },
+          "clearWhenHidden": true,
+          "options": [
+            {
+              "label": "Yes",
+              "value": true
+            },
+            {
+              "label": "No",
+              "value": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
