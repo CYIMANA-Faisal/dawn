@@ -21,11 +21,6 @@ type FormAnswer = FormPrimitive | FormPrimitive[]
 type FormAnswers = Partial<Record<string, FormAnswer>>
 type RuntimeTemplateValues = Record<string, string>
 type SignatureMode = 'draw' | 'upload'
-type PreviewEntry = {
-  id: string
-  label: string
-  value: string
-}
 
 const PAPER_PANEL_CLASS =
   'rounded-sm border border-[#d7c6a7] bg-[#fffefb] shadow-[0_1px_0_rgba(255,255,255,0.8)]'
@@ -310,15 +305,6 @@ function renderComputedText(
   return interpolateTemplateTokens(selectedTemplate.text, answers, runtimeTemplateValues)
 }
 
-function stringifyPrimitive(value: FormPrimitive): string {
-  if (typeof value === 'boolean') return value ? 'Yes' : 'No'
-  return String(value)
-}
-
-function getFieldLabel(field: FormField): string {
-  return field.label || field.key || field.id
-}
-
 function normalizeFieldDescriptor(value: string | null | undefined): string {
   return (value || '')
     .trim()
@@ -467,97 +453,6 @@ function isMemberNameFieldCandidate(field: FormField): boolean {
       descriptor.includes('member name') ||
       descriptor.includes('shareholder name'),
   )
-}
-
-function getOptionLabelForValue(
-  field: FormField,
-  value: FormPrimitive,
-  answers: FormAnswers,
-  runtimeTemplateValues: RuntimeTemplateValues,
-): string {
-  const matchingOption = getFieldOptions(field, answers).find(
-    (option) => option.value === value,
-  )
-  if (!matchingOption) return stringifyPrimitive(value)
-  return interpolateTemplateTokens(matchingOption.label, answers, runtimeTemplateValues)
-}
-
-function getPreviewValue(
-  field: FormField,
-  answers: FormAnswers,
-  runtimeTemplateValues: RuntimeTemplateValues,
-): string | null {
-  if (field.type === 'computed_text') {
-    const computedText = renderComputedText(field, answers, runtimeTemplateValues)
-    return computedText.trim().length > 0 ? computedText : null
-  }
-
-  const answerKey = getFieldAnswerKey(field)
-  const value = answers[answerKey]
-
-  if (value === null || value === undefined) return null
-
-  if (field.type === 'checkbox' && Array.isArray(value)) {
-    if (value.length === 0) return null
-    return value
-      .map((selectedValue) =>
-        getOptionLabelForValue(field, selectedValue, answers, runtimeTemplateValues),
-      )
-      .join(', ')
-  }
-
-  if (field.type === 'checkbox') {
-    if (typeof value !== 'boolean') return null
-    return value ? 'Yes' : 'No'
-  }
-
-  if (field.type === 'radio' || field.type === 'select') {
-    if (Array.isArray(value)) return value.map((item) => stringifyPrimitive(item)).join(', ')
-    return getOptionLabelForValue(field, value, answers, runtimeTemplateValues)
-  }
-
-  if (Array.isArray(value)) {
-    if (value.length === 0) return null
-    return value.map((item) => stringifyPrimitive(item)).join(', ')
-  }
-
-  if (typeof value === 'string') {
-    const trimmedValue = value.trim()
-    return trimmedValue.length > 0 ? trimmedValue : null
-  }
-
-  return stringifyPrimitive(value)
-}
-
-function collectPreviewEntries(
-  fields: FormField[],
-  answers: FormAnswers,
-  runtimeTemplateValues: RuntimeTemplateValues,
-): PreviewEntry[] {
-  return fields.flatMap((field) => {
-    if (!isFieldVisible(field, answers)) return []
-
-    if (field.type === 'group' || field.type === 'repeatable_group') {
-      return collectPreviewEntries(
-        Array.isArray(field.fields) ? field.fields : [],
-        answers,
-        runtimeTemplateValues,
-      )
-    }
-
-    if (field.type === 'signature') return []
-
-    const value = getPreviewValue(field, answers, runtimeTemplateValues)
-    if (!value) return []
-
-    return [
-      {
-        id: field.id,
-        label: getFieldLabel(field),
-        value,
-      },
-    ]
-  })
 }
 
 function renderField(
@@ -1017,20 +912,6 @@ export default function ProjectFormRenderPage() {
     proposedLiquidatorsFirmAddressParam,
     searchParams,
   ])
-
-  const previewSections = useMemo(() => {
-    return formSections
-      .map((section) => ({
-        id: section.id,
-        title: section.title || 'General',
-        entries: collectPreviewEntries(
-          Array.isArray(section.questions) ? section.questions : [],
-          resolvedAnswers,
-          runtimeTemplateValues,
-        ),
-      }))
-      .filter((section) => section.entries.length > 0)
-  }, [formSections, resolvedAnswers, runtimeTemplateValues])
 
   const hasSignatureField = useMemo(() => {
     return flattenFields(topLevelFields).some((field) => field.type === 'signature')
@@ -1574,91 +1455,11 @@ export default function ProjectFormRenderPage() {
             </Card>
           )}
 
-          <Card className="rounded-sm border-[#d6c4a7] bg-[#fffefb]/90 shadow-none">
-            <CardHeader className="border-b border-dashed border-[#d7c8ae] pb-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <CardTitle className="text-xs font-semibold uppercase tracking-[0.14em] text-[#6a5537]">
-                  Answers Preview
-                </CardTitle>
-                <span
-                  className={
-                    isFormReady
-                      ? 'rounded-full border border-[#b7c5a5] bg-[#eef5e4] px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[#365a2e]'
-                      : 'rounded-full border border-[#d2bb95] bg-[#fbf3df] px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[#7a5a23]'
-                  }
-                >
-                  {isFormReady ? 'Ready' : 'Draft'}
-                </span>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4 pt-4">
-              {previewSections.length === 0 && !hasSignature ? (
-                <p className="text-sm text-[#5d4a33]">
-                  Start filling the form to see a read-only filled preview here.
-                </p>
-              ) : (
-                <>
-                  {previewSections.map((section) => (
-                    <section
-                      key={section.id}
-                      className="rounded-sm border border-[#ddcfb6] bg-[#fbf6eb] px-3 py-3"
-                    >
-                      <h4 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-[#755f40]">
-                        {section.title}
-                      </h4>
-                      <div className="space-y-2">
-                        {section.entries.map((entry) => (
-                          <div
-                            key={entry.id}
-                            className="grid gap-1 border-b border-dashed border-[#e3d5be] pb-2 last:border-b-0 last:pb-0 sm:grid-cols-[minmax(180px,240px)_1fr]"
-                          >
-                            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-[#846b49]">
-                              {entry.label}
-                            </p>
-                            <p className="whitespace-pre-wrap text-[0.94rem] text-[#322515]">
-                              {entry.value}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </section>
-                  ))}
-
-                  {hasSignatureField && (
-                    <section className="rounded-sm border border-[#ddcfb6] bg-[#fbf6eb] px-3 py-3">
-                      <h4 className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-[#755f40]">
-                        Signature
-                      </h4>
-                      <p className="mb-2 text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-[#846b49]">
-                        Signed By
-                      </p>
-                      <p className="mb-3 text-sm font-semibold tracking-[0.06em] text-[#3d2f1c] uppercase">
-                        {signatureDisplayNameInCaps || '—'}
-                      </p>
-                      {hasSignature ? (
-                        <Image
-                          src={signatureImageData}
-                          alt="Submitted signature preview"
-                          width={320}
-                          height={112}
-                          unoptimized
-                          className="max-h-28 rounded-sm border border-[#d9ccb4] bg-[#fffefb]"
-                        />
-                      ) : (
-                        <p className="text-[0.94rem] text-[#322515]">Not provided</p>
-                      )}
-                    </section>
-                  )}
-                </>
-              )}
-            </CardContent>
-          </Card>
-
           <Card className="rounded-sm border-[#d2bb95] bg-[#fbf3df] shadow-none">
             <CardContent className="p-4">
               <p className="text-sm text-[#7a5a23]">
-                Once you submit, your responses are locked. A PDF copy of your signed form will
-                be available to the Company&apos;s representative.
+                Once you submit, your responses are locked. You will receive a PDF copy of your
+                answers by email and your responses shared with the Company&apos;s representative
               </p>
             </CardContent>
           </Card>

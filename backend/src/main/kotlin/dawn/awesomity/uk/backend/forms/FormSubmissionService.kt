@@ -83,20 +83,32 @@ class FormSubmissionService(
         context.setVariable("responses", request.responses)
         context.setVariable("signatureImage", request.signatureImage)
         
-        // Map questions for easier access in template
+        // Map only answered questions for easier access in template
         val allQuestions = form.sections.flatMap { it.questions }
-        val responseMap = allQuestions.associateBy({ it.key }, { q ->
+        val responseMap = allQuestions.mapNotNull { q ->
             val value = request.responses[q.key]
-            if (q.type == "radio" || q.type == "select") {
-                // Find label for value
+            if (value == null || value.toString().isBlank()) return@mapNotNull null
+            
+            val formattedValue = if (q.type == "radio" || q.type == "select") {
                 val optionsJson = q.options
                 if (optionsJson != null) {
                     val options = objectMapper.readValue(optionsJson, List::class.java) as List<Map<String, Any>>
-                    options.find { it["value"] == value }?.get("label") ?: value
+                    // Match by value, with fallback to string comparison
+                    options.find { it["value"] == value || it["value"]?.toString() == value.toString() }?.get("label") ?: value
                 } else value
             } else value
-        })
+            
+            q.key to formattedValue
+        }.toMap()
         context.setVariable("formattedResponses", responseMap)
+
+        // Pre-filter sections and questions that have answers to simplify template logic
+        val answeredData = form.sections.mapNotNull { section ->
+            val answeredQuestionsInSection = section.questions.filter { q -> responseMap.containsKey(q.key) }
+            if (answeredQuestionsInSection.isEmpty()) null
+            else mapOf("title" to section.title, "questions" to answeredQuestionsInSection)
+        }
+        context.setVariable("answeredData", answeredData)
 
         val htmlContent = templateEngine.process("pdf/form_submission_pdf", context)
         

@@ -424,7 +424,7 @@ export default function ProjectDetailsPage() {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <StatCard icon={Users} label="Total Shareholders" value={totalShareholders} />
-              <StatCard icon={PieChart} label="Total Shares %" value={sharesOnCurrentPage} />
+              <StatCard icon={PieChart} label="Total Shares" value={sharesOnCurrentPage} />
             </div>
 
             <Card className="border-slate-200/80 bg-white">
@@ -507,7 +507,7 @@ export default function ProjectDetailsPage() {
                           <TableRow className="hover:bg-transparent">
                             <TableHead>Name</TableHead>
                             <TableHead>Email</TableHead>
-                            <TableHead>Total Shares (%)</TableHead>
+                            <TableHead>Shareholding</TableHead>
                             {formsDropdown.map((form) => (
                               <TableHead key={form.id}>
                                 <div className="flex min-w-[200px] items-center justify-between gap-2">
@@ -538,7 +538,14 @@ export default function ProjectDetailsPage() {
                                 {shareholder.email || '—'}
                               </TableCell>
                               <TableCell className="text-slate-700">
-                                {shareholder.numberOfShares}%
+                                {`${sharesOnCurrentPage > 0
+                                  ? (
+                                      (shareholder.numberOfShares / sharesOnCurrentPage) *
+                                      100
+                                    ).toLocaleString(undefined, {
+                                      maximumFractionDigits: 2,
+                                    })
+                                  : '0'}%`}
                               </TableCell>
                               {formsDropdown.map((form) => {
                                 const statusConfig = getShareholderFormStatusPresentation(

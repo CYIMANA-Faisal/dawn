@@ -3,56 +3,215 @@
 <head>
     <meta charset="UTF-8" />
     <style>
-        body { font-family: 'DejaVu Sans', sans-serif; margin: 40px; color: #333; }
-        .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #2e7d32; padding-bottom: 10px; }
-        .form-title { font-size: 24px; font-weight: bold; color: #2e7d32; }
-        .section { margin-top: 25px; }
-        .section-title { font-size: 18px; font-weight: bold; background-color: #f1f8e9; padding: 5px 10px; border-left: 4px solid #2e7d32; margin-bottom: 15px; }
-        .question-group { margin-bottom: 15px; page-break-inside: avoid; }
-        .label { font-weight: bold; font-size: 14px; color: #555; }
-        .value { font-size: 15px; margin-top: 5px; border-bottom: 1px solid #eee; padding-bottom: 3px; }
-        .signature-section { margin-top: 50px; border-top: 1px solid #ddd; padding-top: 20px; }
-        .signature-image { max-width: 300px; max-height: 150px; margin-top: 10px; }
-        .footer { position: fixed; bottom: 0; left: 0; width: 100%; font-size: 10px; color: #999; text-align: center; }
+        @page {
+            margin: 0.5in;
+            @bottom-right {
+                content: "Page " counter(page) " of " counter(pages);
+                font-family: 'DejaVu Sans', sans-serif;
+                font-size: 8pt;
+                color: #718096;
+            }
+        }
+        body {
+            font-family: 'DejaVu Sans', sans-serif;
+            color: #2D3748;
+            line-height: 1.5;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            padding: 10px;
+        }
+        .header-table {
+            width: 100%;
+            border-bottom: 2px solid #1a202c;
+            margin-bottom: 30px;
+        }
+        .brand {
+            color: #1a202c;
+            font-size: 24pt;
+            font-weight: bold;
+            letter-spacing: -1px;
+        }
+        .brand span {
+            color: #718096;
+            font-weight: normal;
+        }
+        .doc-info {
+            text-align: right;
+            color: #718096;
+            font-size: 9pt;
+            vertical-align: bottom;
+            padding-bottom: 5px;
+        }
+        .title-section {
+            margin-bottom: 35px;
+        }
+        .form-title {
+            font-size: 22pt;
+            font-weight: bold;
+            color: #1a202c;
+            margin: 0;
+            line-height: 1.2;
+        }
+        .form-subtitle {
+            font-size: 11pt;
+            color: #4a5568;
+            margin-top: 8px;
+            font-style: italic;
+        }
+        .info-grid {
+            width: 100%;
+            margin-bottom: 35px;
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-collapse: collapse;
+        }
+        .info-cell {
+            padding: 12px 15px;
+            font-size: 10pt;
+            border-bottom: 1px solid #edf2f7;
+        }
+        .info-label {
+            font-weight: bold;
+            color: #4a5568;
+            width: 120px;
+            background-color: #edf2f7;
+        }
+        .section {
+            margin-bottom: 35px;
+            page-break-inside: avoid;
+        }
+        .section-header {
+            font-size: 13pt;
+            font-weight: bold;
+            color: #1a202c;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 6px;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .question-group {
+            margin-bottom: 20px;
+            padding-left: 5px;
+        }
+        .label {
+            font-weight: bold;
+            font-size: 10pt;
+            color: #4a5568;
+            margin-bottom: 5px;
+        }
+        .value {
+            font-size: 11pt;
+            color: #2d3748;
+            padding: 10px 15px;
+            background-color: #ffffff;
+            border-left: 4px solid #4a5568;
+            border-top: 1px solid #f7fafc;
+            border-right: 1px solid #f7fafc;
+            border-bottom: 1px solid #f7fafc;
+        }
+        .signature-container {
+            margin-top: 40px;
+            padding: 25px;
+            background-color: #f8fafc;
+            border: 1px dashed #cbd5e0;
+            page-break-inside: avoid;
+        }
+        .signature-header {
+            font-weight: bold;
+            color: #4a5568;
+            margin-bottom: 15px;
+            font-size: 11pt;
+            text-align: center;
+        }
+        .signature-box {
+            text-align: center;
+        }
+        .signature-image {
+            max-width: 280px;
+            max-height: 120px;
+            margin-bottom: 15px;
+        }
+        .signature-details {
+            font-size: 9pt;
+            color: #718096;
+            margin-top: 10px;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 12px;
+        }
+        .footer {
+            margin-top: 50px;
+            font-size: 8pt;
+            color: #a0aec0;
+            text-align: center;
+            border-top: 1px solid #edf2f7;
+            padding-top: 20px;
+        }
     </style>
 </head>
 <body>
-    <div class="header">
-        <div class="form-title" th:text="${form.title}">Form Title</div>
-        <p th:text="${form.subtitle}">Form Subtitle</p>
-    </div>
+    <div class="container">
+        <table class="header-table">
+            <tr>
+                <td class="header-left">
+                    <div class="brand">DAWN<span>PLATFORM</span></div>
+                </td>
+                <td class="doc-info">
+                    <strong>OFFICIAL SUBMISSION RECORD</strong><br/>
+                    Generated on <span th:text="${#temporals.format(#temporals.createNow(), 'dd MMMM yyyy')}">Date</span>
+                </td>
+            </tr>
+        </table>
 
-    <div class="section">
-        <div class="section-title">Respondent Information</div>
-        <div class="question-group">
-            <div class="label">Name</div>
-            <div class="value" th:text="${shareholder.name}">Shareholder Name</div>
+        <div class="title-section">
+            <h1 class="form-title" th:text="${form.title}">Form Title</h1>
+            <p class="form-subtitle" th:text="${form.subtitle}">Form Subtitle</p>
         </div>
-        <div class="question-group">
-            <div class="label">Email</div>
-            <div class="value" th:text="${shareholder.email}">Email</div>
-        </div>
-    </div>
 
-    <div th:each="section : ${form.sections}" class="section">
-        <div class="section-title" th:text="${section.title}">Section Title</div>
-        
-        <div th:each="question : ${section.questions}" class="question-group">
-            <div th:if="${formattedResponses.containsKey(question.key)}">
+        <table class="info-grid">
+            <tr>
+                <td class="info-cell info-label">Respondent</td>
+                <td class="info-cell" th:text="${shareholder.name}">Name</td>
+            </tr>
+            <tr>
+                <td class="info-cell info-label">Email Address</td>
+                <td class="info-cell" th:text="${shareholder.email}">Email</td>
+            </tr>
+            <tr>
+                <td class="info-cell info-label">Submission Status</td>
+                <td class="info-cell">Verified &amp; Digitally Signed</td>
+            </tr>
+        </table>
+
+        <!-- Iterating through pre-filtered answered data -->
+        <div th:each="section : ${answeredData}" class="section">
+            <div class="section-header" th:text="${section.title}">Section Title</div>
+            
+            <div th:each="question : ${section.questions}" class="question-group">
                 <div class="label" th:text="${question.label}">Question Label</div>
                 <div class="value" th:text="${formattedResponses.get(question.key)}">Response</div>
             </div>
         </div>
-    </div>
 
-    <div class="signature-section">
-        <div class="section-title">Signature</div>
-        <p>Digitally signed by <strong th:text="${shareholder.name}">Name</strong> on <span th:text="${#temporals.format(#temporals.createNow(), 'dd MMMM yyyy HH:mm')}">Date</span></p>
-        <img th:if="${signatureImage != null}" th:src="${signatureImage}" class="signature-image" alt="Signature"/>
-    </div>
+        <div class="signature-container">
+            <div class="signature-header">Certification &amp; Digital Signature</div>
+            <div class="signature-box">
+                <img th:if="${signatureImage != null}" th:src="${signatureImage}" class="signature-image" alt="Signature"/>
+                <div th:if="${signatureImage == null}" style="height: 60px; color: #a0aec0; padding-top: 20px;">[ No physical signature provided ]</div>
+                
+                <div class="signature-details">
+                    Digitally authenticated by <strong th:text="${shareholder.name}">Name</strong><br/>
+                    Timestamp: <span th:text="${#temporals.format(#temporals.createNow(), 'dd MMMM yyyy HH:mm:ss')}">Timestamp</span>
+                </div>
+            </div>
+        </div>
 
-    <div class="footer">
-        Generated by Dawn Platform | Submission ID: <span th:text="${#ids.seq('submission')}"></span>
+        <div class="footer">
+            This document serves as a formal record of submission to the Dawn Platform.<br/>
+            &#169; <span th:text="${#temporals.format(#temporals.createNow(), 'yyyy')}"></span> Dawn. All rights reserved.
+        </div>
     </div>
 </body>
 </html>
